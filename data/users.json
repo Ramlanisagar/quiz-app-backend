@@ -1,0 +1,18 @@
+{
+  "admin": {
+    "password": "$2a$10$WFDNoWR.ZEF5PK3rz9sXPuZYd2RRB63J.xatJWR/ZzejN.RSHxuam",
+    "role": "admin"
+  },
+  "SR": {
+    "password": "$2a$10$NmxkkRLApxfOmmv/teL.M.lPQAkms0OMJ7y1YwR5yVxne2BB1vIsG",
+    "role": "student"
+  },
+  "SR1": {
+    "password": "$2a$10$X0M2oWWwj6CDGD7EZYdrieQ52GEG0YPRTB6Esf2EzT150k/DBzmg2",
+    "role": "student"
+  },
+  "SR2": {
+    "password": "$2a$10$2VeqXzRj5StlrI0Pwc0T3egdFNLdYLiioVjVyefWT503y0StxJnne",
+    "role": "student"
+  }
+}

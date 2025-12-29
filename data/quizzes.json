@@ -1,0 +1,185 @@
+[
+  {
+    "id": "1766933823597",
+    "title": "Quiz - 1",
+    "questions": [
+      {
+        "text": "Choose correct Series",
+        "type": "single_select",
+        "options": [
+          "ABC",
+          "CDE",
+          "DEF",
+          "JKL"
+        ],
+        "correct": "JKL"
+      },
+      {
+        "text": "Capital of India?",
+        "type": "text",
+        "options": [],
+        "correct": "Delhi"
+      },
+      {
+        "text": "2*5?",
+        "type": "integer",
+        "options": [
+          "5",
+          "10",
+          "20",
+          "30"
+        ],
+        "correct": "10"
+      },
+      {
+        "text": "Select all even numbers",
+        "type": "multi_select",
+        "options": [
+          "2",
+          "3",
+          "4",
+          "5"
+        ],
+        "correct": [
+          "2",
+          "4"
+        ]
+      },
+      {
+        "text": "Select all numbers divided by 5",
+        "type": "multi_select",
+        "options": [
+          "6",
+          "10",
+          "20",
+          "40"
+        ],
+        "correct": [
+          "6"
+        ]
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "1766935248654",
+    "title": "Quiz - 2",
+    "questions": [
+      {
+        "text": "5*5",
+        "type": "integer",
+        "options": [],
+        "correct": "25"
+      },
+      {
+        "text": "India's Financial Capital",
+        "type": "text",
+        "options": [],
+        "correct": "Mumbai"
+      },
+      {
+        "text": "Select Odd one out",
+        "type": "single_select",
+        "options": [
+          "ABC",
+          "CDE",
+          "EFG",
+          "GHJ"
+        ],
+        "correct": "GHJ"
+      },
+      {
+        "text": "Select all odd numbers",
+        "type": "multi_select",
+        "options": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "correct": [
+          "1",
+          "3"
+        ]
+      }
+    ],
+    "active": false
+  },
+  {
+    "id": "1766936126908",
+    "title": "Quiz - 3",
+    "questions": [
+      {
+        "text": "5*10",
+        "type": "integer",
+        "options": [],
+        "correct": "50"
+      },
+      {
+        "text": "Select all birds mentioned",
+        "type": "multi_select",
+        "options": [
+          "Sparrow",
+          "Cow",
+          "Dog",
+          "Peacock"
+        ],
+        "correct": [
+          "Sparrow",
+          "Peacock"
+        ]
+      }
+    ],
+    "active": false
+  },
+  {
+    "id": "1766949241152",
+    "title": "QUIZ-4",
+    "questions": [
+      {
+        "text": "5*3",
+        "type": "integer",
+        "options": [],
+        "correct": "15"
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "1766949883817",
+    "title": "NewQuiz-1",
+    "questions": [
+      {
+        "text": "4*3",
+        "type": "single_select",
+        "options": [
+          "12",
+          "22",
+          "20",
+          "21"
+        ],
+        "correct": "12"
+      },
+      {
+        "text": "4*4",
+        "type": "integer",
+        "options": [],
+        "correct": "16"
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "1767031805215",
+    "title": "QUIZ - 6",
+    "questions": [
+      {
+        "text": "5*5",
+        "type": "integer",
+        "options": [],
+        "correct": "25"
+      }
+    ],
+    "active": true
+  }
+]
