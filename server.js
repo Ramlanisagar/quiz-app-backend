@@ -98,7 +98,17 @@ app.get('/api/quizzes/:id', authenticate, (req, res) => {
   const quiz = quizzes.find(q => q.id === req.params.id);
   if (!quiz) return res.status(404).json({ error: 'Not found' });
   if (req.user.role !== 'admin' && quiz.active === false) return res.status(403).json({ error: 'Inactive quiz' });
-  res.json(quiz);
+  // res.json(quiz);
+
+  // Only shuffle for students (admin sees original order for editing)
+  if (req.user.role === 'student') {
+    // Create a shuffled copy of questions
+    const shuffledQuestions = [...quiz.questions].sort(() => Math.random() - 0.5);
+    res.json({ ...quiz, questions: shuffledQuestions });
+  } else {
+    // Admin sees original order
+    res.json(quiz);
+  }
 });
 
 app.post('/api/quizzes', authenticate, isAdmin, (req, res) => {
