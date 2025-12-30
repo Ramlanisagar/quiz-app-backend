@@ -157,70 +157,208 @@ app.post('/api/attempts', authenticate, (req, res) => {
   if (!quizId || score === undefined) return res.status(400).json({ error: 'Missing fields' });
 
   const attempts = readJSON(ATTEMPTS_FILE);
-  if (!attempts[req.user.username]) attempts[req.user.username] = {};
 
-  attempts[req.user.username][quizId] = {
+  // Initialize user and quiz
+  if (!attempts[req.user.username]) attempts[req.user.username] = {};
+  if (!attempts[req.user.username][quizId]) attempts[req.user.username][quizId] = [];
+
+  let quizAttempts = attempts[req.user.username][quizId];
+
+  // Convert old single object to array if needed
+  if (!Array.isArray(quizAttempts) && typeof quizAttempts === 'object' && quizAttempts !== null) {
+    quizAttempts = [{
+      score: quizAttempts.score,
+      passed: quizAttempts.passed,
+      timestamp: quizAttempts.timestamp || new Date().toISOString(),
+      date: quizAttempts.date || new Date().toLocaleDateString(),
+      time: quizAttempts.time || new Date().toLocaleTimeString(),
+      attemptNumber: 1
+    }];
+    attempts[req.user.username][quizId] = quizAttempts; // Update in memory
+  }
+
+  // Ensure it's an array now
+  if (!Array.isArray(quizAttempts)) quizAttempts = [];
+
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  // Filter recent attempts safely
+  const recentAttempts = quizAttempts.filter(attempt => {
+    const attemptTime = new Date(attempt.timestamp || attempt.date); // fallback
+    return attemptTime > twentyFourHoursAgo;
+  });
+
+  if (recentAttempts.length >= 3) {
+    const oldestRecent = new Date(Math.min(...recentAttempts.map(a => new Date(a.timestamp || a.date))));
+    const blockUntil = new Date(oldestRecent.getTime() + 24 * 60 * 60 * 1000);
+
+    return res.status(429).json({
+      error: 'Attempt limit reached',
+      message: 'You have used all 3 attempts in the last 24 hours.',
+      blockedUntil: blockUntil.toLocaleString()
+    });
+  }
+
+  // Record new attempt
+  const newAttempt = {
     score: parseFloat(score),
     passed: score >= 60,
-    date: new Date().toISOString().split('T')[0]
+    timestamp: now.toISOString(),
+    date: now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    attemptNumber: quizAttempts.length + 1
   };
 
+  quizAttempts.push(newAttempt);
+  attempts[req.user.username][quizId] = quizAttempts;
+
   writeJSON(ATTEMPTS_FILE, attempts);
-  res.json({ message: 'Submitted', score });
+
+  res.json({
+    message: 'Attempt recorded',
+    attempt: newAttempt,
+    remainingAttempts: 3 - (recentAttempts.length + 1)
+  });
 });
 
+// app.post('/api/attempts', authenticate, (req, res) => {
+//   if (req.user.role !== 'student') return res.status(403).json({ error: 'Students only' });
+//   const { quizId, score } = req.body;
+//   if (!quizId || score === undefined) return res.status(400).json({ error: 'Missing fields' });
+
+//   const attempts = readJSON(ATTEMPTS_FILE);
+
+//   // Initialize user if not exists
+//   if (!attempts[req.user.username]) {
+//     attempts[req.user.username] = {};
+//   }
+
+//   // Initialize quiz attempts as array
+//   if (!attempts[req.user.username][quizId]) {
+//     attempts[req.user.username][quizId] = [];
+//   }
+
+//   // If old format exists (single object), convert to array
+//   if (!Array.isArray(attempts[req.user.username][quizId]) && attempts[req.user.username][quizId] !== undefined) {
+//     const oldAttempt = attempts[req.user.username][quizId];
+//     attempts[req.user.username][quizId] = [{
+//       score: oldAttempt.score,
+//       passed: oldAttempt.passed,
+//       timestamp: oldAttempt.timestamp || new Date().toISOString(),
+//       date: oldAttempt.date || new Date().toLocaleDateString(),
+//       time: oldAttempt.time || new Date().toLocaleTimeString(),
+//       attemptNumber: 1
+//     }];
+//   }
+
+//   // Now safely push new attempt
+//   const newAttempt = {
+//     score: parseFloat(score),
+//     passed: score >= 60,
+//     timestamp: new Date().toISOString(),
+//     date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+//     time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+//     attemptNumber: attempts[req.user.username][quizId].length + 1
+//   };
+
+//   attempts[req.user.username][quizId].push(newAttempt);
+
+//   writeJSON(ATTEMPTS_FILE, attempts);
+//   res.json({ message: 'Attempt recorded', attempt: newAttempt });
+// });
+
 // ================ EXCEL RESULTS DOWNLOAD ================
-app.get('/api/quizzes/:id/results', authenticate, isAdmin, async (req, res) => {
+app.get('/api/quizzes/:id/results', authenticate, isAdmin, (req, res) => {
   const quizId = req.params.id;
   const quizzes = readJSON(QUIZZES_FILE);
-  const quiz = quizzes.find(q => q.id === quizId);
+  const quiz = quizzes.find(q => q.id === req.params.id);
   if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
 
   const attempts = readJSON(ATTEMPTS_FILE);
   const results = [];
 
   for (const [username, userAttempts] of Object.entries(attempts)) {
-    if (userAttempts[quizId]) {
-      const attempt = userAttempts[quizId];
+    const quizAttempts = userAttempts[quizId];
+
+    if (!quizAttempts) continue;
+
+    // Handle both old (object) and new (array) formats
+    if (Array.isArray(quizAttempts)) {
+      quizAttempts.forEach((attempt, index) => {
+        results.push({
+          username,
+          attemptNumber: index + 1,
+          score: attempt.score,
+          status: attempt.passed ? 'Pass' : 'Fail',
+          date: attempt.date || 'Unknown',
+          time: attempt.time || ''
+        });
+      });
+    } else if (typeof quizAttempts === 'object' && quizAttempts !== null) {
+      // Old single attempt format
       results.push({
         username,
-        score: attempt.score,
-        status: attempt.passed ? 'Pass' : 'Fail',
-        date: attempt.date
+        attemptNumber: 1,
+        score: quizAttempts.score,
+        status: quizAttempts.passed ? 'Pass' : 'Fail',
+        date: quizAttempts.date || 'Unknown',
+        time: quizAttempts.time || ''
       });
     }
   }
 
+  // Sort by date descending (newest first)
+  results.sort((a, b) => {
+    const dateA = a.date === 'Unknown' ? 0 : new Date(a.date);
+    const dateB = b.date === 'Unknown' ? 0 : new Date(b.date);
+    return dateB - dateA;
+  });
+
+  const ExcelJS = require('exceljs');
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Results');
+  const worksheet = workbook.addWorksheet('All Attempts');
 
   worksheet.columns = [
     { header: 'Student Username', key: 'username', width: 25 },
+    { header: 'Attempt #', key: 'attemptNumber', width: 12 },
     { header: 'Score (%)', key: 'score', width: 15 },
     { header: 'Status', key: 'status', width: 12 },
-    { header: 'Date Taken', key: 'date', width: 15 }
+    { header: 'Date', key: 'date', width: 20 },
+    { header: 'Time', key: 'time', width: 12 }
   ];
 
   results.forEach(row => worksheet.addRow(row));
 
-  worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  worksheet.getRow(1).fill = {
+  // Style header
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
     type: 'pattern',
     pattern: 'solid',
-    fgColor: { argb: 'FF4472C4' }
+    fgColor: { argb: 'FF232F3E' }  // Dark navy like navbar
   };
+  headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
+  // Set response headers
   res.setHeader(
     'Content-Type',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="${quiz.title.replace(/[^a-z0-9]/gi, '_')}_Results.xlsx"`
+    `attachment; filename="${quiz.title.replace(/[^a-z0-9]/gi, '_')}_All_Attempts.xlsx"`
   );
 
-  await workbook.xlsx.write(res);
-  res.end();
+  // Write and end properly
+  workbook.xlsx.write(res)
+    .then(() => {
+      res.end();
+    })
+    .catch(err => {
+      console.error('Excel write error:', err);
+      res.status(500).json({ error: 'Failed to generate Excel' });
+    });
 });
 
 // Admin only: Get all attempts (to count per quiz)
