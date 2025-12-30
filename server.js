@@ -56,6 +56,11 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
+const isManager = (req, res, next) => {
+  if (req.user.role !== 'manager') return res.status(403).json({ error: 'Manager only' });
+  next();
+};
+
 // ================ AUTH ROUTES ================
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
@@ -91,6 +96,40 @@ app.get('/api/quizzes', (req, res) => {
 app.get('/api/quizzes/admin', authenticate, isAdmin, (req, res) => {
   const quizzes = readJSON(QUIZZES_FILE);
   res.json(quizzes);
+});
+
+// Manager sees only active quizzes with attempt counts
+app.get('/api/quizzes/manager', authenticate, isManager, (req, res) => {
+  const quizzes = readJSON(QUIZZES_FILE);
+  const attempts = readJSON(ATTEMPTS_FILE);
+
+  const activeQuizzes = quizzes.filter(q => q.active !== false).map(quiz => {
+    let totalAttempts = 0;
+    let uniqueStudents = 0;
+    const studentsSet = new Set();
+
+    Object.entries(attempts).forEach(([username, userAttempts]) => {
+      if (userAttempts[quiz.id]) {
+        const quizAttempts = Array.isArray(userAttempts[quiz.id]) 
+          ? userAttempts[quiz.id] 
+          : [userAttempts[quiz.id]];
+        totalAttempts += quizAttempts.length;
+        studentsSet.add(username);
+      }
+    });
+
+    uniqueStudents = studentsSet.size;
+
+    return {
+      id: quiz.id,
+      title: quiz.title,
+      questionsCount: quiz.questions.length,
+      totalAttempts,
+      uniqueStudents
+    };
+  });
+
+  res.json(activeQuizzes);
 });
 
 app.get('/api/quizzes/:id', authenticate, (req, res) => {
@@ -269,7 +308,12 @@ app.post('/api/attempts', authenticate, (req, res) => {
 // });
 
 // ================ EXCEL RESULTS DOWNLOAD ================
-app.get('/api/quizzes/:id/results', authenticate, isAdmin, (req, res) => {
+app.get('/api/quizzes/:id/results', authenticate, (req, res, next) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+    return res.status(403).json({ error: 'Admin or Manager only' });
+  }
+  next();
+}, async (req, res) => {
   const quizId = req.params.id;
   const quizzes = readJSON(QUIZZES_FILE);
   const quiz = quizzes.find(q => q.id === req.params.id);
